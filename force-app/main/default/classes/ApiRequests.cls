@@ -22,16 +22,26 @@ public with sharing class ApiRequests extends fflib_SObjectDomain {
         for(Api_Request__c apiRequest : (List<Api_Request__c>) Records) {
             for(Api_Call__c apiCall: requestIdToApiCall.get(apiRequest.Id)) {
                 HttpRequest req = new HttpRequest();
-                req.setEndpoint(apiRequest.Endpoint__c);
+                String endpoint = apiRequest.Endpoint__c;
                 req.setMethod(apiRequest.Type__c);
+                
+                if(apiRequest.Input_params__c == 'In JSON') {
+                    req.setBody(apiCall.Request_Body__c);
+                    req.setHeader('Content-type', 'application/json; charset=UTF-8');
+                }
+                if(apiRequest.Input_params__c == 'In Url') {
+                    endpoint += apiCall.Url_Param__c != null ? apiCall.Url_Param__c : '';
+                }
+
+                req.setEndpoint(endpoint);
+
                 if(externalSystemToApiRequest.get(apiRequest.External_System__c) == null) externalSystemToApiRequest.put(apiRequest.External_System__c, new Map<Id, HttpRequest>());
                 externalSystemToApiRequest.get(apiRequest.External_System__c).put(apiCall.Id, req);
                 apiCallIdToObj.put(apiCall.Id, apiCall);
-                if(apiRequest.Type__c != 'GET') {
-                    req.setBody(apiCall.Request_Body__c);
-                }
             }
         }
+        Map<Id, Boolean> apiRequestHasSomeProblems = new Map<Id, Boolean>();
+        Map<Id, Boolean> externalSystemHasSomeProblems = new Map<Id, Boolean>();
 
         for(Id externalSystemId : externalSystemToApiRequest.keySet()) {
             for(Id apiCallId : externalSystemToApiRequest.get(externalSystemId).keySet()) {
@@ -49,15 +59,35 @@ public with sharing class ApiRequests extends fflib_SObjectDomain {
                 apiCall.Response_status_code__c = responseStatusCode;
                 apiCall.Response_message__c = responseBody;
                 apiCall.Id = apiCallId;
-                apiCall.has_some_problems__c = apiCallIdToObj.get(apiCall.Id).Expected_Status_Code__c != responseStatusCode;
+                Boolean apiHasSomeProblems = apiCallIdToObj.get(apiCall.Id).Expected_Status_Code__c != responseStatusCode;
+                apiCall.has_some_problems__c = apiHasSomeProblems;
+                
+                Id apiReuqestId = apiCallIdToObj.get(apiCall.Id).Api_Request__r.Id;
+                
+                Api_Request__c apiRequest = new Api_Request__c(Id= apiReuqestId, has_some_problems__c = apiHasSomeProblems);
+                External_System__c externalSystem = new External_System__c(Id = externalSystemId);
 
-                System.debug('@@@MAGAR : '+ apiCall.Expected_Status_Code__c );
+                if(apiHasSomeProblems) {
+                    uow.registerDirty(apiRequest);
+                    apiRequestHasSomeProblems.put(apiReuqestId, true);
+                } else if((apiRequestHasSomeProblems.get(apiReuqestId) != null && !apiRequestHasSomeProblems.get(apiReuqestId) && !apiHasSomeProblems) || apiRequestHasSomeProblems.get(apiReuqestId) == null) {
+                    uow.registerDirty(apiRequest);
+                }
 
-                if(callForAuthorization)  {
-                    External_System__c externalSystem = new External_System__c(Id = externalSystemId, Authorization_Key__c = responseBody);
+                if(apiHasSomeProblems) {
+                    externalSystem.has_some_problems__c = apiHasSomeProblems;
+                    externalSystemHasSomeProblems.put(externalSystemId, true);
+                    uow.registerDirty(externalSystem);
+                } else if((externalSystemHasSomeProblems.get(externalSystemId) != null && !externalSystemHasSomeProblems.get(externalSystemId) && !apiHasSomeProblems ) || externalSystemHasSomeProblems.get(externalSystemId) == null) {
+                    externalSystem.has_some_problems__c = apiHasSomeProblems;
                     uow.registerDirty(externalSystem);
                 }
 
+                if(callForAuthorization)  {
+                    externalSystem.Authorization_Key__c = responseBody;
+                    uow.registerDirty(externalSystem);
+                }
+                
                 uow.registerDirty(apiCall);
                 performCommit = true;
 

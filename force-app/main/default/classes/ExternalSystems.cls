@@ -34,7 +34,7 @@ public with sharing class ExternalSystems extends fflib_SObjectDomain {
         Map<Id, SObject> externalSystemsMap = new Map<Id, SObject>(Records);
         downloadAuthorizationKey();
 
-        ApiRequests apiRequests = new ApiRequests([SELECT Id, Endpoint__c, Type__c, External_System__c
+        ApiRequests apiRequests = new ApiRequests([SELECT Id, Endpoint__c, Type__c, External_System__c, Input_params__c
                                                     FROM 
                                                         Api_Request__c 
                                                     WHERE 
