@@ -10,13 +10,13 @@ public with sharing class ApiRequests extends fflib_SObjectDomain {
         }
     }
 
-    public void callToExternalSystem(Boolean callForAuthorization) {
+    public void makeCalloutBasedOnApiRequest(Boolean callForAuthorization) {
         fflib_SObjectUnitOfWork uow = new fflib_SObjectUnitOfWork(new Schema.SObjectType[] { Api_Call__c.SObjectType, Api_Request__c.SObjectType, External_System__c.SObjectType });
 
         Map<Id, Map<Id, HttpRequest>> externalSystemToApiRequest = new Map<Id, Map<Id, HttpRequest>>();
         Map<Id, Api_Call__c> apiCallIdToObj = new Map<Id, Api_Call__c>();
         Map<Id, SObject> apiRequestsMap = new Map<Id, SObject>(Records);
-        Map<Id, List<Api_Call__c>> requestIdToApiCall = ApiCalls.getApiCallsWithApiRequestIdMap(apiRequestsMap.keySet());
+        Map<Id, List<Api_Call__c>> requestIdToApiCall = ApiCalls.generateApiRequestToListOfApiCallsMap(apiRequestsMap.keySet());
         Boolean performCommit = false;
 
         for(Api_Request__c apiRequest : (List<Api_Request__c>) Records) {
@@ -99,44 +99,4 @@ public with sharing class ApiRequests extends fflib_SObjectDomain {
         }
 
     }
-
-    // public void callToExternalSystemForAuth() {
-    //     fflib_SObjectUnitOfWork uow = new fflib_SObjectUnitOfWork(new Schema.SObjectType[] { Api_Call__c.SObjectType, Api_Request__c.SObjectType, External_System__c.SObjectType });
-
-    //     Map<Id, HttpRequest> externalSystemToApiRequest = new Map<Id, HttpRequest>();
-    //     Map<Id, Id> apiCallToExternalSystem = new Map<Id, Id>();
-
-    //     Map<Id, SObject> apiRequestsMap = new Map<Id, SObject>(Records);
-    //     Map<Id, Api_Call__c> requestIdToApiCall = ApiCalls.getApiCallsWithApiRequestIdMap(apiRequestsMap.keySet());
-
-
-    //     for(Api_Request__c apiRequest : (List<Api_Request__c>) Records) {
-    //         HttpRequest req = new HttpRequest();
-    //         req.setEndpoint(apiRequest.Endpoint__c);
-    //         req.setMethod(apiRequest.Type__c);
-    //         externalSystemToApiRequest.put(apiRequest.External_System__c, req);
-    //         apiCallToExternalSystem.put(apiRequest.External_System__c, requestIdToApiCall.get(apiRequest.Id).Id);
-    //     }
-
-    //     for(Id externalSystemId : externalSystemToApiRequest.keySet()) {
-    //         HttpRequest httpReq = externalSystemToApiRequest.get(externalSystemId);
-    //         Http http = new Http();
-    //         HTTPResponse res = http.send(httpReq);
-    //         String responseBody = res.getBody();
-    //         String responseStatus = res.getStatus();
-    //         String responseStatusCode = String.valueOf(res.getStatusCode());
-            
-    //         Api_Call__c apiCall = new Api_Call__c();
-    //         apiCall.Response_status__c = responseStatus;
-    //         apiCall.Response_status_code__c = responseStatusCode;
-    //         apiCall.Response_message__c = responseBody;
-    //         apiCall.Id = apiCallToExternalSystem.get(externalSystemId);
-            
-    //         External_System__c externalSystem = new External_System__c(Id = externalSystemId, Authorization_Key__c = responseBody);
-    //         uow.registerDirty(externalSystem);
-    //         uow.registerDirty(apiCall);
-    //     }
-
-    //     uow.commitWork();
-    // }
 }

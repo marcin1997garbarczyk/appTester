@@ -10,7 +10,7 @@ public with sharing class ExternalSystems extends fflib_SObjectDomain {
         }
     }
 
-    public void downloadAuthorizationKey() {
+    public void setupAuthorizationKeyOnExternalSystem() {
         Set<Id> externalSystemToAuthorizeIds = new Set<Id>();
 
         for(External_System__c es : (List<External_System__c>) Records) {
@@ -18,8 +18,6 @@ public with sharing class ExternalSystems extends fflib_SObjectDomain {
                 externalSystemToAuthorizeIds.add(es.Id);
             }
         }
-
-
         ApiRequests apiRequests = new ApiRequests([SELECT Id, Endpoint__c, Type__c, External_System__c
                                                     FROM 
                                                         Api_Request__c 
@@ -27,12 +25,12 @@ public with sharing class ExternalSystems extends fflib_SObjectDomain {
                                                         External_System__c IN: externalSystemToAuthorizeIds
                                                         AND RecordType.DeveloperName = 'Authorization_request'
                                                        ]);
-        apiRequests.callToExternalSystem(true);
+        apiRequests.makeCalloutBasedOnApiRequest(true);
     }
 
-    public void testExternalApi() {
+    public void runTestOnApiRequestUnderExternalSystems() {
         Map<Id, SObject> externalSystemsMap = new Map<Id, SObject>(Records);
-        downloadAuthorizationKey();
+        setupAuthorizationKeyOnExternalSystem();
 
         ApiRequests apiRequests = new ApiRequests([SELECT Id, Endpoint__c, Type__c, External_System__c, Input_params__c
                                                     FROM 
@@ -42,6 +40,6 @@ public with sharing class ExternalSystems extends fflib_SObjectDomain {
                                                         AND RecordType.DeveloperName != 'Authorization_request'
                                                        ]);
 
-        apiRequests.callToExternalSystem(false);
+        apiRequests.makeCalloutBasedOnApiRequest(false);
     }
 }

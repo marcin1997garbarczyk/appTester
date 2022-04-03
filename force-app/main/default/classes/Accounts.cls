@@ -10,9 +10,9 @@ public with sharing class Accounts extends fflib_SObjectDomain {
         }
     }
 
-    public void testApiForAccount() {
+    public void runTestForExternalSystemsUnderAccount() {
         Map<Id, SObject> accountsMap = new Map<Id, SObject>(Records);
         ExternalSystems externalSystems = new ExternalSystems([SELECT Id, Authorization_type__c, Authorization_Key__c FROM External_System__c WHERE Account__r.Id IN: accountsMap.keySet()]);
-        externalSystems.testExternalApi();
+        externalSystems.runTestOnApiRequestUnderExternalSystems();
     }
 }
