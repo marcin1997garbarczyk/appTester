@@ -11,7 +11,7 @@ public with sharing class ApiRequests extends fflib_SObjectDomain {
     }
 
     public void makeCalloutBasedOnApiRequest(Boolean callForAuthorization) {
-        fflib_SObjectUnitOfWork uow = new fflib_SObjectUnitOfWork(new Schema.SObjectType[] { Api_Call__c.SObjectType, Api_Request__c.SObjectType, External_System__c.SObjectType });
+        fflib_SObjectUnitOfWork uow = new fflib_SObjectUnitOfWork(new Schema.SObjectType[] { Api_Call__c.SObjectType, Api_Request__c.SObjectType, External_System__c.SObjectType, Error_Log__c.SObjectType });
 
         Map<Id, Map<Id, HttpRequest>> externalSystemToApiRequest = new Map<Id, Map<Id, HttpRequest>>();
         Map<Id, Api_Call__c> apiCallIdToObj = new Map<Id, Api_Call__c>();
@@ -42,7 +42,8 @@ public with sharing class ApiRequests extends fflib_SObjectDomain {
         }
         Map<Id, Boolean> apiRequestHasSomeProblems = new Map<Id, Boolean>();
         Map<Id, Boolean> externalSystemHasSomeProblems = new Map<Id, Boolean>();
-
+        List<Error_Log__c> errorLogs = new List<Error_Log__c>();
+        Map<Id, External_System__c> idToExternalSystemMap = new Map<Id, External_System__c>([SELECT Id , Start_date__c, Account__r.Id FROM External_System__c WHERE Id IN: externalSystemToApiRequest.keySet()]);
         for(Id externalSystemId : externalSystemToApiRequest.keySet()) {
             for(Id apiCallId : externalSystemToApiRequest.get(externalSystemId).keySet()) {
                 Map<Id, HttpRequest> apiCallTohttpReq = externalSystemToApiRequest.get(apiCallId);
@@ -65,24 +66,28 @@ public with sharing class ApiRequests extends fflib_SObjectDomain {
                 Id apiReuqestId = apiCallIdToObj.get(apiCall.Id).Api_Request__r.Id;
                 
                 Api_Request__c apiRequest = new Api_Request__c(Id= apiReuqestId, has_some_problems__c = apiHasSomeProblems);
-                External_System__c externalSystem = new External_System__c(Id = externalSystemId);
-
+                External_System__c externalSystem = idToExternalSystemMap.get(externalSystemId);
+                
                 if(apiHasSomeProblems) {
+                    uow.registerNew(new Error_Log__c(Name= 'Problem with: '+apiCallIdToObj.get(apiCall.Id).Name, Account__c = idToExternalSystemMap.get(externalSystemId).Account__r.Id,
+                                                         External_system__c = externalSystemId, api_call__c = apiCallId
+                                                        ,status__c = responseStatus, status_code__c = responseStatusCode, 
+                                                        message__c = responseBody, expected_status_code__c = apiCallIdToObj.get(apiCall.Id).Expected_Status_Code__c));
                     uow.registerDirty(apiRequest);
                     apiRequestHasSomeProblems.put(apiReuqestId, true);
                 } else if((apiRequestHasSomeProblems.get(apiReuqestId) != null && !apiRequestHasSomeProblems.get(apiReuqestId) && !apiHasSomeProblems) || apiRequestHasSomeProblems.get(apiReuqestId) == null) {
                     uow.registerDirty(apiRequest);
                 }
-
+                if(externalSystem.start_date__c == null) externalSystem.start_date__c = DateTime.now();
+                externalSystem.Last_Date__c = DateTime.now();
                 if(apiHasSomeProblems) {
                     externalSystem.has_some_problems__c = apiHasSomeProblems;
                     externalSystemHasSomeProblems.put(externalSystemId, true);
-                    uow.registerDirty(externalSystem);
                 } else if((externalSystemHasSomeProblems.get(externalSystemId) != null && !externalSystemHasSomeProblems.get(externalSystemId) && !apiHasSomeProblems ) || externalSystemHasSomeProblems.get(externalSystemId) == null) {
                     externalSystem.has_some_problems__c = apiHasSomeProblems;
-                    uow.registerDirty(externalSystem);
                 }
 
+                uow.registerDirty(externalSystem);
                 if(callForAuthorization)  {
                     externalSystem.Authorization_Key__c = responseBody;
                     uow.registerDirty(externalSystem);

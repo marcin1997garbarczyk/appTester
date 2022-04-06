@@ -10,6 +10,10 @@ public with sharing class ExternalSystems extends fflib_SObjectDomain {
         }
     }
 
+    // public overide  onAfterUpdate(Map<Id,SObject> existingRecords) {
+
+    // }
+
     public void setupAuthorizationKeyOnExternalSystem() {
         Set<Id> externalSystemToAuthorizeIds = new Set<Id>();
 
